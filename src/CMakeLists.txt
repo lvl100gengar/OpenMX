@@ -7,5 +7,6 @@ include(${wxWidgets_USE_FILE})
 add_executable(main WIN32 main.cpp)
 target_link_libraries(main ${wxWidgets_LIBRARIES})
 
+add_subdirectory(io)
 add_subdirectory(ui)
 target_link_libraries(main ui)
