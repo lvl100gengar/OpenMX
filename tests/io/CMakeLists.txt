@@ -1,0 +1,1 @@
+target_sources(tests PUBLIC BinaryReader.Test.cpp BinaryWriter.Test.cpp)

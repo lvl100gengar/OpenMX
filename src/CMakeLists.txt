@@ -9,4 +9,4 @@ target_link_libraries(main ${wxWidgets_LIBRARIES})
 
 add_subdirectory(io)
 add_subdirectory(ui)
-target_link_libraries(main ui)
+target_link_libraries(main ui io)
