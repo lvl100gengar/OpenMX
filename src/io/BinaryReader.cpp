@@ -5,7 +5,7 @@
 namespace OpenMX {
 namespace io {
 
-    BinaryReader::BinaryReader(char* buffer, size_t position, size_t capacity)
+    BinaryReader::BinaryReader(const char* buffer, size_t position, size_t capacity)
         : m_buffer(buffer)
         , m_currentPosition(position)
         , m_bufferCapacity(capacity)
@@ -14,16 +14,16 @@ namespace io {
 
     void BinaryReader::setBuffer(size_t position, size_t capacity)
     {
-        m_currentPosition=position;
-        m_bufferCapacity=capacity;
+        m_currentPosition = position;
+        m_bufferCapacity = capacity;
     }
 
     bool BinaryReader::canRead(size_t readSize) const
     {
-        return (m_currentPosition + readSize) <= m_bufferCapacity;
+        return readSize < INT16_MAX && (m_currentPosition + readSize) <= m_bufferCapacity;
     }
 
-    unsigned char BinaryReader::readByte()
+    uint8_t BinaryReader::readByte()
     {
         if (!canRead(1))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
@@ -31,7 +31,7 @@ namespace io {
         return m_buffer[m_currentPosition++];
     }
 
-    unsigned short BinaryReader::readShort()
+    uint16_t BinaryReader::readShort()
     {
         if (!canRead(2))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
@@ -41,22 +41,30 @@ namespace io {
         return result;
     }
 
-    unsigned int BinaryReader::readInt()
+    uint32_t BinaryReader::readInt()
     {
         if (!canRead(4))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
 
-        unsigned short result = (m_buffer[m_currentPosition] << 24) | (m_buffer[m_currentPosition + 1] << 16) | (m_buffer[m_currentPosition + 2] << 8) | m_buffer[m_currentPosition + 3];
+        unsigned int result = (m_buffer[m_currentPosition] << 24) | (m_buffer[m_currentPosition + 1] << 16) | (m_buffer[m_currentPosition + 2] << 8) | m_buffer[m_currentPosition + 3];
         m_currentPosition += 4;
         return result;
     }
 
-    unsigned long BinaryReader::readLong()
+    uint64_t BinaryReader::readLong()
     {
         if (!canRead(8))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
 
-        unsigned short result = (m_buffer[m_currentPosition] << 56) | (m_buffer[m_currentPosition + 1] << 48) | (m_buffer[m_currentPosition + 2] << 40) | (m_buffer[m_currentPosition + 3] << 32) | (m_buffer[m_currentPosition + 4] << 24) | (m_buffer[m_currentPosition + 5] << 16) | (m_buffer[m_currentPosition + 6] << 8) | m_buffer[m_currentPosition + 7];
+        uint64_t result = 0;
+        result |= (uint64_t)m_buffer[m_currentPosition + 0] << 56;
+        result |= (uint64_t)m_buffer[m_currentPosition + 1] << 48;
+        result |= (uint64_t)m_buffer[m_currentPosition + 2] << 40;
+        result |= (uint64_t)m_buffer[m_currentPosition + 3] << 32;
+        result |= (uint64_t)m_buffer[m_currentPosition + 4] << 24;
+        result |= (uint64_t)m_buffer[m_currentPosition + 5] << 16;
+        result |= (uint64_t)m_buffer[m_currentPosition + 6] << 8;
+        result |= (uint64_t)m_buffer[m_currentPosition + 7];
         m_currentPosition += 8;
         return result;
     }
@@ -66,7 +74,7 @@ namespace io {
         size_t nullTerminatorIndex = m_bufferCapacity;
 
         for (size_t i = m_currentPosition; i < m_bufferCapacity; i++) {
-            if (!m_buffer[m_currentPosition]) {
+            if (m_buffer[i] == '\0') {
                 nullTerminatorIndex = i;
                 break;
             }
@@ -95,12 +103,12 @@ namespace io {
         return std::string(m_buffer + m_currentPosition, length);
     }
 
-    char* BinaryReader::readBytes(size_t count)
+    uint8_t* BinaryReader::readBytes(size_t count)
     {
         if (!canRead(count))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
 
-        char* result = new char[count];
+        uint8_t* result = new uint8_t[count];
         std::copy(m_buffer + m_currentPosition, m_buffer + m_currentPosition + count, result);
         m_currentPosition += count;
         return result;
