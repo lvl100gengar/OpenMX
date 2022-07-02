@@ -36,7 +36,9 @@ namespace io {
         if (!canRead(2))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
 
-        unsigned short result = (m_buffer[m_currentPosition] << 8) | m_buffer[m_currentPosition + 1];
+        uint16_t result = 0;
+        result |= m_buffer[m_currentPosition + 0] << 8;
+        result |= m_buffer[m_currentPosition + 1];
         m_currentPosition += 2;
         return result;
     }
@@ -46,7 +48,11 @@ namespace io {
         if (!canRead(4))
             throw std::runtime_error("Attempted to read beyond buffer capacity.");
 
-        unsigned int result = (m_buffer[m_currentPosition] << 24) | (m_buffer[m_currentPosition + 1] << 16) | (m_buffer[m_currentPosition + 2] << 8) | m_buffer[m_currentPosition + 3];
+        uint32_t result = 0;
+        result |= m_buffer[m_currentPosition + 0] << 24;
+        result |= m_buffer[m_currentPosition + 1] << 16;
+        result |= m_buffer[m_currentPosition + 2] << 8;
+        result |= m_buffer[m_currentPosition + 3];
         m_currentPosition += 4;
         return result;
     }

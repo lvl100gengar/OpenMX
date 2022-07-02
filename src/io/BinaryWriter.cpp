@@ -16,34 +16,45 @@ namespace io {
         return (m_currentPosition + writeSize) <= m_bufferCapacity;
     }
 
-    void BinaryWriter::writeByte(unsigned char value)
+    void BinaryWriter::writeByte(uint8_t value)
     {
         assert(canWrite(1));
 
         m_buffer[m_currentPosition++] = value;
     }
 
-    void BinaryWriter::writeShort(unsigned short value)
+    void BinaryWriter::writeShort(uint16_t value)
     {
         assert(canWrite(2));
 
-        m_buffer[m_currentPosition] = value;
+        m_buffer[m_currentPosition + 0] = (value >> 8) & 0xFF;
+        m_buffer[m_currentPosition + 1] = (value >> 0) & 0xFF;
         m_currentPosition += 2;
     }
 
-    void BinaryWriter::writeInt(unsigned int value)
+    void BinaryWriter::writeInt(uint32_t value)
     {
         assert(canWrite(4));
 
-        m_buffer[m_currentPosition] = value;
+        m_buffer[m_currentPosition + 0] = (value >> 24) & 0xFF;
+        m_buffer[m_currentPosition + 1] = (value >> 16) & 0xFF;
+        m_buffer[m_currentPosition + 2] = (value >> 8) & 0xFF;
+        m_buffer[m_currentPosition + 3] = (value >> 0) & 0xFF;
         m_currentPosition += 4;
     }
 
-    void BinaryWriter::writeLong(unsigned long value)
+    void BinaryWriter::writeLong(uint64_t value)
     {
         assert(canWrite(8));
 
-        m_buffer[m_currentPosition] = value;
+        m_buffer[m_currentPosition + 0] = (value >> 56) & 0xFF;
+        m_buffer[m_currentPosition + 1] = (value >> 48) & 0xFF;
+        m_buffer[m_currentPosition + 2] = (value >> 40) & 0xFF;
+        m_buffer[m_currentPosition + 3] = (value >> 32) & 0xFF;
+        m_buffer[m_currentPosition + 4] = (value >> 24) & 0xFF;
+        m_buffer[m_currentPosition + 5] = (value >> 16) & 0xFF;
+        m_buffer[m_currentPosition + 6] = (value >> 8) & 0xFF;
+        m_buffer[m_currentPosition + 7] = (value >> 0) & 0xFF;
         m_currentPosition += 8;
     }
 

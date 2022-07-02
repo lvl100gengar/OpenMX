@@ -12,10 +12,10 @@ namespace io {
     public:
         BinaryWriter(char* buffer, size_t position, size_t capacity);
         bool canWrite(size_t writeSize) const;
-        void writeByte(unsigned char value);
-        void writeShort(unsigned short value);
-        void writeInt(unsigned int value);
-        void writeLong(unsigned long value);
+        void writeByte(uint8_t value);
+        void writeShort(uint16_t value);
+        void writeInt(uint32_t value);
+        void writeLong(uint64_t value);
         void writeString(const std::string& value, bool nullTerminate);
         void writeBytes(const unsigned char* buffer, size_t startingIndex, size_t count);
     };
