@@ -1,0 +1,1 @@
+add_library(protocol Channelname.cpp User.cpp Username.cpp)
