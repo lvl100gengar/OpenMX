@@ -5,9 +5,9 @@
 namespace OpenMX {
 namespace io {
 
-    BinaryReader::BinaryReader(const char* buffer, size_t position, size_t capacity)
+    BinaryReader::BinaryReader(const char* buffer, size_t capacity)
         : m_buffer(buffer)
-        , m_currentPosition(position)
+        , m_currentPosition(0)
         , m_bufferCapacity(capacity)
     {
     }

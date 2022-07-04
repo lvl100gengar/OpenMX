@@ -14,7 +14,7 @@ namespace io {
         size_t m_bufferCapacity;
 
     public:
-        BinaryReader(const char* buffer, size_t position, size_t capacity);
+        BinaryReader(const char* buffer, size_t capacity);
         
         void setBuffer(size_t position, size_t capacity);
         bool canRead(size_t readSize) const;
