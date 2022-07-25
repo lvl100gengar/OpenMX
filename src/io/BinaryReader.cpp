@@ -12,6 +12,14 @@ namespace io {
     {
     }
 
+    size_t BinaryReader::capacity() const {
+        return m_bufferCapacity;
+    }
+
+    void BinaryReader::skip(size_t count) {
+        m_currentPosition += count;
+    }
+
     void BinaryReader::setBuffer(size_t position, size_t capacity)
     {
         m_currentPosition = position;

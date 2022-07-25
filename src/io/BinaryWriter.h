@@ -1,7 +1,14 @@
+#pragma once
+
 #include <string>
 
 namespace OpenMX {
 namespace io {
+
+    enum StringOptions{
+        NullTerminate,
+        Raw
+    }
 
     class BinaryWriter {
     private:
@@ -10,7 +17,7 @@ namespace io {
         size_t m_bufferCapacity;
 
     public:
-        BinaryWriter(char* buffer, size_t position, size_t capacity);
+        BinaryWriter(char* buffer, size_t capacity);
         bool canWrite(size_t writeSize) const;
         void writeByte(uint8_t value);
         void writeShort(uint16_t value);

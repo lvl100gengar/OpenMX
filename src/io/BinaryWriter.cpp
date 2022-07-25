@@ -4,9 +4,9 @@
 namespace OpenMX {
 namespace io {
 
-    BinaryWriter::BinaryWriter(char* buffer, size_t position, size_t capacity)
+    BinaryWriter::BinaryWriter(char* buffer, size_t capacity)
         : m_buffer(buffer)
-        , m_currentPosition(position)
+        , m_currentPosition(0)
         , m_bufferCapacity(capacity)
     {
     }

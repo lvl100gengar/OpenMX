@@ -6,7 +6,7 @@ using OpenMX::io::BinaryWriter;
 TEST_CASE("Writing a byte")
 {
     char buffer[1];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 1);
+    BinaryWriter writer = BinaryWriter(buffer, 1);
 
     writer.writeByte(0x64);
 
@@ -16,7 +16,7 @@ TEST_CASE("Writing a byte")
 TEST_CASE("Writing a short")
 {
     char buffer[2];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 2);
+    BinaryWriter writer = BinaryWriter(buffer, 2);
 
     writer.writeShort(0x6464);
 
@@ -27,7 +27,7 @@ TEST_CASE("Writing a short")
 TEST_CASE("Writing an int")
 {
     char buffer[4];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 4);
+    BinaryWriter writer = BinaryWriter(buffer, 4);
 
     writer.writeInt(0x64646464);
 
@@ -40,7 +40,7 @@ TEST_CASE("Writing an int")
 TEST_CASE("Writing a long")
 {
     char buffer[8];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 8);
+    BinaryWriter writer = BinaryWriter(buffer, 8);
 
     writer.writeLong(0x6464646464646464);
 
@@ -57,7 +57,7 @@ TEST_CASE("Writing a long")
 TEST_CASE("Writing several bytes")
 {
     char buffer[4];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 4);
+    BinaryWriter writer = BinaryWriter(buffer, 4);
 
     unsigned char data[] = {1, 10, 100, 255};
     writer.writeBytes(data, 0, 3);
@@ -71,7 +71,7 @@ TEST_CASE("Writing several bytes")
 TEST_CASE("Writing a null-term string")
 {
     char buffer[10];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 10);
+    BinaryWriter writer = BinaryWriter(buffer, 10);
 
     writer.writeString(std::string("str1"), true);
     writer.writeString(std::string("str2"), true);
@@ -87,7 +87,7 @@ TEST_CASE("Writing a null-term string")
 TEST_CASE("Writing a unterminated string")
 {
     char buffer[10];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 10);
+    BinaryWriter writer = BinaryWriter(buffer, 10);
 
     writer.writeString(std::string("abcdefg"), false); // 7 char string
     writer.writeByte(1);
@@ -106,7 +106,7 @@ TEST_CASE("Writing a unterminated string")
 TEST_CASE("Writing an empty string")
 {
     char buffer[1];
-    BinaryWriter writer = BinaryWriter(buffer, 0, 1);
+    BinaryWriter writer = BinaryWriter(buffer, 1);
 
     writer.writeString("", true);
 
