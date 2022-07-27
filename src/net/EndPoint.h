@@ -4,25 +4,24 @@
 #include <string>
 
 namespace OpenMX {
-namespace net {
 
-    class EndPoint {
-    private:
-        uint32_t m_address;
-        uint16_t m_port;
-    public:
-        EndPoint() = default;
-        EndPoint(uint32_t address, uint16_t port);
+class EndPoint {
+private:
+    uint32_t m_address;
+    uint16_t m_port;
 
-        uint32_t address() const;
-        uint16_t port() const;
-        bool isEmpty() const;
+public:
+    EndPoint() = default;
+    EndPoint(uint32_t address, uint16_t port);
 
-        static bool tryParse(std::string& s, EndPoint& result);
-        static bool tryParse(std::string& ip, std::string& port, EndPoint& result);
+    uint32_t address() const;
+    uint16_t port() const;
+    bool isEmpty() const;
 
-         bool operator==(const EndPoint& other) const;
-    };
+    static bool tryParse(std::string& s, EndPoint& result);
+    static bool tryParse(std::string& ip, std::string& port, EndPoint& result);
 
-} // namespace net
+    bool operator==(const EndPoint& other) const;
+};
+
 } // namespace OpenMX

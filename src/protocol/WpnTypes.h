@@ -3,7 +3,6 @@
 #include <cstdint>
 
 namespace OpenMX {
-namespace protocol {
 
     typedef uint8_t wpn_byte_t;
     typedef uint16_t wpn_short_t;
@@ -13,5 +12,4 @@ namespace protocol {
     typedef wpn_byte_t wpn_crypt_id_t;
     typedef wpn_int_t wpn_crypt_key_t;
 
-} // namespace protocol
 } // namespace OpenMX

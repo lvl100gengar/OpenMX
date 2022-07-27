@@ -1,1 +1,1 @@
-add_library(io BinaryReader.cpp BinaryWriter.cpp)
+add_library(io BinaryReader.cpp BinaryWriter.cpp Buffer.cpp)

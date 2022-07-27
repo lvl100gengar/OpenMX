@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-namespace OpenMX::protocol {
+namespace OpenMX {
 
 #define STREAM_TYPE(typeName) \
     std::ostringstream ss;    \
@@ -19,8 +19,6 @@ namespace OpenMX::protocol {
 #define MAKE_CONSTR(typeName) \
     typeName() = default;     \
     typeName(BinaryReader& reader) { decode(reader); }
-
-using namespace OpenMX::io;
 
 struct Message {
     virtual void encode(BinaryWriter& writer) const = 0;
@@ -159,6 +157,14 @@ struct ChatUserJoin : public Message {
     wpn_int_t sharedFiles;
 
     MAKE_CONSTR(ChatUserJoin)
+    explicit ChatUserJoin(ClientData const& dataSource)
+    {
+        userName = dataSource.name;
+        parentAddress = dataSource.parentAddress;
+        parentUdpPort = dataSource.parentPort;
+        lineType = dataSource.lineType;
+        sharedFiles = dataSource.sharedFiles;
+    }
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -204,6 +210,14 @@ struct ChatUserList : public Message {
     wpn_int_t sharedFiles;
 
     MAKE_CONSTR(ChatUserList)
+    explicit ChatUserList(ClientData const& dataSource)
+    {
+        userName = dataSource.name;
+        parentAddress = dataSource.parentAddress;
+        parentUdpPort = dataSource.parentPort;
+        lineType = dataSource.lineType;
+        sharedFiles = dataSource.sharedFiles;
+    }
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -237,7 +251,7 @@ struct ChatUserList : public Message {
 
 /**
  * @brief Sent by chat server when a user's information changes.
- * @details 112 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4]
+ * @details 112 [OldUserName:N][OldPriIp:4][OldPriPort:2][UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4]
  */
 struct ChatUserRename : public Message {
     constexpr static wpn_short_t type = 112;
@@ -608,6 +622,15 @@ struct ChatUserJoinRank : public Message {
     wpn_byte_t rank;
 
     MAKE_CONSTR(ChatUserJoinRank)
+    explicit ChatUserJoinRank(ClientData const& dataSource)
+    {
+        userName = dataSource.name;
+        parentAddress = dataSource.parentAddress;
+        parentUdpPort = dataSource.parentPort;
+        lineType = dataSource.lineType;
+        sharedFiles = dataSource.sharedFiles;
+        rank = dataSource.rank;
+    }
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -657,6 +680,15 @@ struct ChatUserListRank : public Message {
     wpn_byte_t rank;
 
     MAKE_CONSTR(ChatUserListRank)
+    explicit ChatUserListRank(ClientData const& dataSource)
+    {
+        userName = dataSource.name;
+        parentAddress = dataSource.parentAddress;
+        parentUdpPort = dataSource.parentPort;
+        lineType = dataSource.lineType;
+        sharedFiles = dataSource.sharedFiles;
+        rank = dataSource.rank;
+    }
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -693,7 +725,7 @@ struct ChatUserListRank : public Message {
 
 /**
  * @brief Sent by chat server when a user's information changes.
- * @details 116 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4][Rank:1]
+ * @details 116 [OldUserName:N][OldPriIp:4][OldPriPort:2][UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4][Rank:1]
  */
 struct ChatUserRenameRank : public Message {
     constexpr static wpn_short_t type = 116;
@@ -759,9 +791,6 @@ struct ChatUserRenameRank : public Message {
 struct ChatUserJoinRankIp : public Message {
     constexpr static wpn_short_t type = 117;
 
-    std::string oldUserName;
-    wpn_int_t oldParentAddress;
-    wpn_short_t oldParentUdpPort;
     std::string userName;
     wpn_int_t parentAddress;
     wpn_short_t parentUdpPort;
@@ -771,13 +800,20 @@ struct ChatUserJoinRankIp : public Message {
     wpn_int_t ipAddress;
 
     MAKE_CONSTR(ChatUserJoinRankIp)
+    explicit ChatUserJoinRankIp(ClientData const& dataSource)
+    {
+        userName = dataSource.name;
+        parentAddress = dataSource.parentAddress;
+        parentUdpPort = dataSource.parentPort;
+        lineType = dataSource.lineType;
+        sharedFiles = dataSource.sharedFiles;
+        rank = dataSource.rank;
+        ipAddress = dataSource.endPoint.address();
+    }
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
-        writer.writeShort(oldUserName.size() + userName.size() + 25);
-        writer.writeString(oldUserName, true);
-        writer.writeInt(oldParentAddress);
-        writer.writeShort(oldParentUdpPort);
+        writer.writeShort(userName.size() + 25);
         writer.writeString(userName, true);
         writer.writeInt(parentAddress);
         writer.writeShort(parentUdpPort);
@@ -789,9 +825,6 @@ struct ChatUserJoinRankIp : public Message {
     void decode(BinaryReader& reader)
     {
         reader.skip(4);
-        oldUserName = reader.readString();
-        oldParentAddress = reader.readInt();
-        oldParentUdpPort = reader.readShort();
         userName = reader.readString();
         parentAddress = reader.readInt();
         parentUdpPort = reader.readShort();
@@ -803,9 +836,6 @@ struct ChatUserJoinRankIp : public Message {
     std::string describe() const
     {
         STREAM_TYPE(ChatUserJoinRankIp)
-        STREAM_VAR(oldUserName)
-        STREAM_VAR(oldParentAddress)
-        STREAM_VAR(oldParentUdpPort)
         STREAM_VAR(userName)
         STREAM_VAR(parentAddress)
         STREAM_VAR(parentUdpPort)
