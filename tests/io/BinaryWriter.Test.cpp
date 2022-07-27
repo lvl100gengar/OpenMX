@@ -1,7 +1,7 @@
 #include "io/BinaryWriter.h"
 #include "../catch.hpp"
 
-using OpenMX::io::BinaryWriter;
+using OpenMX::BinaryWriter;
 
 TEST_CASE("Writing a byte")
 {

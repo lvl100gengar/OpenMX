@@ -6,15 +6,15 @@ namespace OpenMX {
  * @brief Named ID constants for the known generators.
  * 
  */
-enum BlockGeneratorId : char {
-    BgiInvalid,
-    BgiPrimaryClient = 80,
-    BgiPrimaryServer = 81,
-    BgiSecondaryClient = 82,
-    BgiSecondaryServer = 83,
-    BgiCacheServer = 84,
-    BgiChatClient = 87,
-    BgiChatServer = 88
+enum class BlockGeneratorId : char {
+    Invalid,
+    PrimaryClient = 80,
+    PrimaryServer = 81,
+    SecondaryClient = 82,
+    SecondaryServer = 83,
+    CacheServer = 84,
+    ChatClient = 87,
+    ChatServer = 88
 };
 
 /**
@@ -51,7 +51,7 @@ public:
      * @return true if the block is valid and the generator id matches
      * @return false if the block is invalid or the id does not match
      */
-    bool parseServerKeys(char const* block, BlockGeneratorId expectedId); // called by client with server generated block, parse and stare
+    bool parseServerKeys(char* block, BlockGeneratorId expectedId); // called by client with server generated block, parse and stare
 
     /**
      * @brief Called by servers to generate a key block and keys. Sets internal keys used by encrypt and decrypt functions.
@@ -102,12 +102,20 @@ void MangleKeyBlock(char* block);
 void GenerateKeyBlock(char* block, BlockGeneratorId id);
 
 /**
- * @brief Gets the ID of the peer that generated the key block
+ * @brief Gets the ID of the peer that generated the key block. Will try again with MangleKeyBlock if the initial result is Invalid.
  * 
  * @param block pointer to a 16 byte key block
- * @return the ID of the peer that generated the block or IdInvalid if the block is invalid
+ * @return the ID of the peer that generated the block or BlockGeneratorId::Invalid if the block is invalid
  */
-BlockGeneratorId GetKeyBlockGenerator(char const* block);
+BlockGeneratorId GetKeyBlockGenerator(char* block);
+
+/**
+ * @brief Gets the ID of the peer that generated the key block.
+ * 
+ * @param block pointer to a 16 byte key block
+ * @return the ID of the peer that generated the block or BlockGeneratorId::Invalid if the block is invalid
+ */
+BlockGeneratorId GetKeyBlockGeneratorCore(char const* block);
 
 /**
  * @brief Gets the keys and generator id from the key block.
@@ -115,9 +123,8 @@ BlockGeneratorId GetKeyBlockGenerator(char const* block);
  * @param block pointer to a 16 byte key block
  * @param up pointer to 4 bytes where the up key will be stored
  * @param down pointer to 4 bytes where the down key will be stored
- * @param alreadyMangled indicates if the block has been (un)mangled (default=false)
- * @return the ID of the peer that generated the block or IdInvalid if the block is invalid
+ * @return the ID of the peer that generated the block or BlockGeneratorId::Invalid if the block is invalid
  */
-BlockGeneratorId ParseKeyBlock(char const* block, char* up, char* down, bool alreadyMangled = false);
+BlockGeneratorId ParseKeyBlock(char* block, char* up, char* down);
 
 } // namespace OpenMX

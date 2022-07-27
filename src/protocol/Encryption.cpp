@@ -169,7 +169,7 @@ void StreamEncryption::generateServerKeys(char* block, BlockGeneratorId generato
     ParseKeyBlock(block, m_encryptKey, m_decryptKey);
 }
 
-bool StreamEncryption::parseServerKeys(char const* block, BlockGeneratorId expectedId)
+bool StreamEncryption::parseServerKeys(char* block, BlockGeneratorId expectedId)
 {
     BlockGeneratorId generator = ParseKeyBlock(block, m_decryptKey, m_encryptKey);
     return generator == expectedId;
@@ -259,8 +259,8 @@ void GenerateKeyBlock(char* block, BlockGeneratorId id)
     std::fill_n(block, 16, baseValue);
 
     block[4] = block[15] ^ block[13] ^ block[5] ^ block[2];
-    block[9] = block[14] ^ block[8] ^ block[1] + id;
-    block[11] = (block[12] ^ block[10] ^ block[7] ^ block[6] ^ block[3] ^ block[0]) + (id >> 7);
+    block[9] = block[14] ^ block[8] ^ block[1] + static_cast<char>(id);
+    block[11] = (block[12] ^ block[10] ^ block[7] ^ block[6] ^ block[3] ^ block[0]) + (static_cast<char>(id) >> 7);
     block[0] = block[0] ^ 87;
 
     for (int i = 1; i <= 104; ++i) {
@@ -273,7 +273,18 @@ void GenerateKeyBlock(char* block, BlockGeneratorId id)
     }
 }
 
-BlockGeneratorId GetKeyBlockGenerator(char const* block)
+BlockGeneratorId GetKeyBlockGenerator(char* block)
+{
+    auto id = GetKeyBlockGeneratorCore(block);
+
+    if (id != BlockGeneratorId::Invalid)
+        return id;
+
+    MangleKeyBlock(block);
+    return GetKeyBlockGeneratorCore(block);
+}
+
+BlockGeneratorId GetKeyBlockGeneratorCore(char const* block)
 {
     // Preserve original since it is usually needed again
     char a[16];
@@ -292,18 +303,18 @@ BlockGeneratorId GetKeyBlockGenerator(char const* block)
     const char z = a[11] - (y >> 7);
 
     if (v == w && x == z)
-        return (BlockGeneratorId)y;
+        return static_cast<BlockGeneratorId>(y);
 
-    return BlockGeneratorId::BgiInvalid;
+    return BlockGeneratorId::Invalid;
 }
 
-BlockGeneratorId ParseKeyBlock(char const* block, char* up, char* down, bool alreadyMangled = false)
+BlockGeneratorId ParseKeyBlock(char* block, char* up, char* down)
 {
-    BlockGeneratorId generator = GetKeyBlockGenerator(block);
+    auto id = GetKeyBlockGenerator(block);
 
-    switch (generator) {
-    case BlockGeneratorId::BgiPrimaryClient:
-    case BlockGeneratorId::BgiPrimaryServer:
+    switch (id) {
+    case BlockGeneratorId::PrimaryClient:
+    case BlockGeneratorId::PrimaryServer:
         up[0] = block[2] - 104;
         up[1] = block[5];
         up[2] = block[9];
@@ -313,8 +324,8 @@ BlockGeneratorId ParseKeyBlock(char const* block, char* up, char* down, bool alr
         down[2] = block[10];
         down[3] = block[7];
         break;
-    case BlockGeneratorId::BgiSecondaryClient:
-    case BlockGeneratorId::BgiSecondaryServer:
+    case BlockGeneratorId::SecondaryClient:
+    case BlockGeneratorId::SecondaryServer:
         up[0] = block[7] + 84;
         up[1] = block[3];
         up[2] = block[9];
@@ -324,8 +335,8 @@ BlockGeneratorId ParseKeyBlock(char const* block, char* up, char* down, bool alr
         down[2] = block[13];
         down[3] = block[6];
         break;
-    case BlockGeneratorId::BgiChatClient:
-    case BlockGeneratorId::BgiChatServer:
+    case BlockGeneratorId::ChatClient:
+    case BlockGeneratorId::ChatServer:
         up[0] = block[7] - 34;
         up[1] = block[3];
         up[2] = block[9];
@@ -335,16 +346,9 @@ BlockGeneratorId ParseKeyBlock(char const* block, char* up, char* down, bool alr
         down[2] = block[13];
         down[3] = block[6];
         break;
-    default:
-        if (!alreadyMangled) {
-            char a[16];
-            std::copy_n(block, 16, a);
-            MangleKeyBlock(a);
-            return ParseKeyBlock(a, up, down, true);
-        }
     }
 
-    return generator;
+    return id;
 }
 
 } // namespace OpenMX

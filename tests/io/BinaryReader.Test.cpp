@@ -1,7 +1,7 @@
 #include "io/BinaryReader.h"
 #include "../catch.hpp"
 
-using OpenMX::io::BinaryReader;
+using OpenMX::BinaryReader;
 
 TEST_CASE("Reading a byte")
 {
