@@ -1,24 +1,21 @@
+#include "../io/BinaryReader.h"
 #include "Username.h"
 
 namespace OpenMX {
-namespace protocol {
 
-    class User : public Username {
+class User : public Username {
 
-    private:
-        uint16_t m_lineType;
-        uint32_t m_sharedFiles;
+private:
+    uint16_t m_lineType;
+    uint32_t m_sharedFiles;
 
-    protected:
-        User(const std::string& name, uint32_t parentAddress, uint16_t parentUdpPort, uint16_t lineType, uint32_t sharedFiles);
+public:
+    User() = default;
+    User(const std::string& name, uint32_t parentAddress, uint16_t parentUdpPort, uint16_t lineType, uint32_t sharedFiles);
+    User(uint16_t lineType, uint32_t parentAddress, uint16_t parentUdpPort, uint32_t sharedFiles, const std::string& name);
 
-    public:
-        uint16_t getLineType() const;
-        uint32_t getSharedFiles() const;
+    uint16_t getLineType() const;
+    uint32_t getSharedFiles() const;
+};
 
-        static bool tryParse(const std::string& name, uint32_t parentAddress, uint16_t parentUdpPort, uint16_t lineType, uint32_t sharedFiles, User* result);
-
-    };
-
-} // namespace protocol
 } // namespace OpenMX

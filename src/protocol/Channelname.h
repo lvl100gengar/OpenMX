@@ -1,22 +1,21 @@
 #pragma once
 
+#include "../net/EndPoint.h"
 #include <string>
 
 namespace OpenMX {
-namespace protocol {
 
-    class Channelname {
-    private:
-        std::string m_name;
+class Channelname {
+private:
+    std::string m_name;
 
-    protected:
-        Channelname(const std::string& name);
+public:
+    Channelname(const std::string& name);
 
-    public:
-        std::string getName() const;
+    std::string getName() const;
+    EndPoint getEndPoint() const;
 
-        static bool tryParse(const std::string& name, Channelname* result);
-    };
+    bool isValid() const;
+};
 
-} // namespace protocol
 } // namespace OpenMX

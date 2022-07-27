@@ -1,7 +1,8 @@
+#include <stdexcept>
+
 #include "Channelname.h"
 
 namespace OpenMX {
-namespace protocol {
 
     Channelname::Channelname(const std::string& name)
         : m_name(name)
@@ -13,12 +14,12 @@ namespace protocol {
         return m_name;
     }
 
-    bool Channelname::tryParse(const std::string& name, Channelname* result)
+    bool Channelname::isValid() const
     {
-        // TODO: actually vet the string
-        *result = Channelname(name);
+        // name and hash seperated by underscore
+        auto underscoreIndex = m_name.rfind('_');
+
         return true;
     }
 
-} // namespace protocol
 } // namespace OpenMX
