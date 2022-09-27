@@ -4,6 +4,8 @@
 
 namespace OpenMX {
 
+class EndPoint;
+
 class Node {
 private:
     uint32_t m_address;
@@ -13,13 +15,17 @@ private:
     uint8_t m_openSecondary;
 
 public:
+    Node() = default;
     Node(uint32_t address, uint16_t udpPort, uint16_t tcpPort, uint8_t openPrimary, uint8_t openSecondary);
 
-    uint32_t getAddress() const;
-    uint16_t getUdpPort() const;
-    uint16_t getTcpPort() const;
-    uint8_t getOpenPrimary() const;
-    uint8_t getOpenSecondary() const;
+    uint32_t address() const;
+    uint16_t udpPort() const;
+    uint16_t tcpPort() const;
+    uint8_t openPrimary() const;
+    uint8_t openSecondary() const;
+
+    bool equalsTcp(const EndPoint& ep) const;
+    bool equalsUdp(const EndPoint& ep) const;
 };
 
 } // namespace OpenMX

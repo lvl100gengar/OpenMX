@@ -9,17 +9,17 @@ Username::Username(const std::string& name, uint32_t parentAddress, uint16_t par
 {
 }
 
-std::string Username::getName() const
+std::string Username::name() const
 {
     return m_name;
 }
 
-uint32_t Username::getParentAddress() const
+uint32_t Username::parentAddress() const
 {
     return m_parentAddress;
 }
 
-uint16_t Username::getParentUdpPort() const
+uint16_t Username::parentUdpPort() const
 {
     return m_parentUdpPort;
 }
@@ -85,6 +85,20 @@ bool Username::isValidFullName(const std::string& name)
     }
 
     return true;
+}
+
+void Username::toBytes(BinaryWriter& writer) const
+{
+    writer.writeString(m_name, true);
+    writer.writeInt(m_parentAddress);
+    writer.writeShort(m_parentUdpPort);
+}
+
+void Username::fromBytes(BinaryReader& reader)
+{
+    m_name = reader.readString();
+    m_parentAddress = reader.readInt();
+    m_parentUdpPort = reader.readShort();
 }
 
 } // namespace OpenMX

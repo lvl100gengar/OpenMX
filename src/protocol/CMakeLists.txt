@@ -1,1 +1,1 @@
-add_library(protocol Encryption.cpp)
+add_library(protocol ChatClientHandler.cpp EndPoint.cpp Encryption.cpp Node.cpp User.cpp Username.cpp RoomName.cpp)

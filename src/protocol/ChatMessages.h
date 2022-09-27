@@ -2,357 +2,243 @@
 
 #include "../io/BinaryReader.h"
 #include "../io/BinaryWriter.h"
+#include "Message.h"
+#include "RoomName.h"
+#include "User.h"
 #include "WpnTypes.h"
 #include <cstdint>
 #include <sstream>
 #include <string>
 
-namespace OpenMX {
+namespace OpenMX::Chat {
 
-#define STREAM_TYPE(typeName) \
-    std::ostringstream ss;    \
-    ss << "[" #typeName "" << typeName::type
-#define STREAM_VAR(variable) << " " #variable "='" << variable << "'"
-#define STREAM_END() \
-    << ']';          \
-    return ss.str();
-#define MAKE_CONSTR(typeName) \
-    typeName() = default;     \
-    typeName(BinaryReader& reader) { decode(reader); }
-
-struct Message {
-    virtual void encode(BinaryWriter& writer) const = 0;
-    virtual void decode(BinaryReader& reader) = 0;
-    virtual std::string describe() const = 0;
-};
-
-/**
- * @brief Sent by a chat client upon connection to request entry to the server.
- * @details 100 [ChannelName:N][Speed:2][PriIp:4][PriPort:2][Files:4][UserName:N]
- */
-struct ChatLogin : public Message {
+struct ClientLogin : public Message {
     constexpr static wpn_short_t type = 100;
-
-    std::string roomName;
-    wpn_short_t lineType;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_int_t sharedFiles;
-    std::string userName;
-
-    MAKE_CONSTR(ChatLogin)
+    RoomName room;
+    User user;
+    ClientLogin(RoomName& r, User& u) : room(r), user(u) {
+        
+    }
+    ClientLogin(BinaryReader& reader)
+    {
+        room.fromBytes(reader);
+        user.fromBytesLoginOrder(reader);
+    }
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(roomName.size() + userName.size() + 14);
-        writer.writeString(roomName, true);
-        writer.writeShort(lineType);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeInt(sharedFiles);
-        writer.writeString(userName, true);
+        secondaryHeader(writer, type, room.name().size() + user.name().size() + 14);
+        room.toBytes(writer);
+        user.toBytesLoginOrder(writer);
     }
-    void decode(BinaryReader& reader)
+    void describe(std::ostringstream& ss) const
     {
-        reader.skip(4);
-        roomName = reader.readString();
-        lineType = reader.readShort();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        sharedFiles = reader.readInt();
-        userName = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatLogin)
-        STREAM_VAR(roomName)
-        STREAM_VAR(lineType)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(userName)
-        STREAM_END()
+        ss << "[Login/" << type << " " << room.describe() << " " << user.describe() << "]";
     }
 };
 
-/**
- * @brief Send by a chat client to update user information.
- * @details 101 [Speed:2][PriIp:4][PriPort:2][Files:4][UserName:N]
- */
-struct ChatRename : public Message {
+struct Rename : public Message {
     constexpr static wpn_short_t type = 101;
-
-    wpn_short_t lineType;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_int_t sharedFiles;
-    std::string userName;
-
-    MAKE_CONSTR(ChatRename)
+    User user;
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 13);
-        writer.writeShort(lineType);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeInt(sharedFiles);
-        writer.writeString(userName, true);
+        secondaryHeader(writer, type, user.name().size() + 13);
+        user.toBytesLoginOrder(writer);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
-        lineType = reader.readShort();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        sharedFiles = reader.readInt();
-        userName = reader.readString();
+        user.fromBytesLoginOrder(reader);
     }
-    std::string describe() const
+    void describe(std::ostringstream& ss) const
     {
-        STREAM_TYPE(ChatRename)
-        STREAM_VAR(lineType)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(userName)
-        STREAM_END()
+        ss << "[Rename/" << type << " " << user.describe() << "]";
     }
 };
 
-/**
- * @brief Chat server response to a Chatlogin message indicating sucessful entry.
- * @details 102 (This message has no payload)
- */
-struct ChatLoginGranted : public Message {
+struct LoginReply : public Message {
     constexpr static wpn_short_t type = 102;
-
-    MAKE_CONSTR(ChatLoginGranted)
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(0);
+        secondaryHeader(writer, type, 0);
     }
     void decode(BinaryReader& reader)
     {
     }
-    std::string describe() const
+    void describe(std::ostringstream& ss) const
     {
-        STREAM_TYPE(ChatLoginGranted)
-        STREAM_END()
+        ss << "[LoginReply/" << type << "]";
     }
 };
 
-/**
- * @brief Sent by chat server when a new user has joined the server. The client typically prints a message informing the user in response to this message.
- * @details 110 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4]
- */
-struct ChatUserJoin : public Message {
+struct Server353Support : public Message {
+    constexpr static wpn_short_t type = 104;
+    void encode(BinaryWriter& writer) const
+    {
+        secondaryHeader(writer, type, 0);
+    }
+    void decode(BinaryReader& reader)
+    {
+    }
+    void describe(std::ostringstream& ss) const
+    {
+        ss << "[Server353Support/" << type << "]";
+    }
+};
+
+struct UserJoin : public Message {
     constexpr static wpn_short_t type = 110;
-
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-
-    MAKE_CONSTR(ChatUserJoin)
-    explicit ChatUserJoin(ClientData const& dataSource)
-    {
-        userName = dataSource.name;
-        parentAddress = dataSource.parentAddress;
-        parentUdpPort = dataSource.parentPort;
-        lineType = dataSource.lineType;
-        sharedFiles = dataSource.sharedFiles;
-    }
+    User user;
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 13);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
+        secondaryHeader(writer, type, user.name().size() + 13);
+        user.toBytesListOrder(writer, false);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
+        user.fromBytesListOrder(reader, false);
     }
-    std::string describe() const
+    void describe(std::ostringstream& ss) const
     {
-        STREAM_TYPE(ChatUserJoin)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_END()
+        ss << "[UserJoin/" << type << " " << user.describe() << "]";
     }
 };
 
-/**
- * @brief Sent by chat server to add a user to the client user list. Typically used to populate a new client's user list at join or with custom join messages.
- * @details 110 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4]
- */
-struct ChatUserList : public Message {
+struct UserList : public Message {
     constexpr static wpn_short_t type = 111;
-
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-
-    MAKE_CONSTR(ChatUserList)
-    explicit ChatUserList(ClientData const& dataSource)
-    {
-        userName = dataSource.name;
-        parentAddress = dataSource.parentAddress;
-        parentUdpPort = dataSource.parentPort;
-        lineType = dataSource.lineType;
-        sharedFiles = dataSource.sharedFiles;
-    }
+    User user;
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 13);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
+        secondaryHeader(writer, type, user.name().size() + 13);
+        user.toBytesListOrder(writer, false);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
+        user.fromBytesListOrder(reader, false);
     }
-    std::string describe() const
+    void describe(std::ostringstream& ss) const
     {
-        STREAM_TYPE(ChatUserList)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_END()
+        ss << "[UserJoin/" << type << " " << user.describe() << "]";
     }
 };
 
-/**
- * @brief Sent by chat server when a user's information changes.
- * @details 112 [OldUserName:N][OldPriIp:4][OldPriPort:2][UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4]
- */
-struct ChatUserRename : public Message {
+struct UserRename : public Message {
     constexpr static wpn_short_t type = 112;
-
-    std::string oldUserName;
-    wpn_int_t oldParentAddress;
-    wpn_short_t oldParentUdpPort;
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-
-    MAKE_CONSTR(ChatUserRename)
+    Username currentInfo;
+    User newInfo;
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(oldUserName.size() + userName.size() + 20);
-        writer.writeString(oldUserName, true);
-        writer.writeInt(oldParentAddress);
-        writer.writeShort(oldParentUdpPort);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
+        secondaryHeader(writer, type, currentInfo.name().size() + newInfo.name().size() + 20);
+        currentInfo.toBytes(writer);
+        newInfo.toBytesListOrder(writer, false);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
-        oldUserName = reader.readString();
-        oldParentAddress = reader.readInt();
-        oldParentUdpPort = reader.readShort();
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
+        currentInfo.fromBytes(reader);
+        newInfo.fromBytesListOrder(reader, false);
     }
-    std::string describe() const
+    void describe(std::ostringstream& ss) const
     {
-        STREAM_TYPE(ChatUserRename)
-        STREAM_VAR(oldUserName)
-        STREAM_VAR(oldParentAddress)
-        STREAM_VAR(oldParentUdpPort)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_END()
+        // ss << "[UserRename/" << type << " current=" << currentInfo << " new=" << newInfo << "]";
     }
 };
 
-/**
- * @brief Sent by chat server when a user leaves the server.
- * @details 115 [UserName:N][PriIp:4][PriPort:2]
- */
-struct ChatUserPart : public Message {
+struct UserJoinRanked : public Message {
+    constexpr static wpn_short_t type = 113;
+    User user;
+    void encode(BinaryWriter& writer) const
+    {
+        secondaryHeader(writer, type, user.name().size() + 14);
+        user.toBytesListOrder(writer, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        user.fromBytesListOrder(reader, true);
+    }
+    void describe(std::ostringstream& ss) const
+    {
+        ss << "[UserJoinRanked/" << type << " " << user.describe() << "]";
+    }
+};
+
+struct UserListRanked : public Message {
+    constexpr static wpn_short_t type = 114;
+    User user;
+    void encode(BinaryWriter& writer) const
+    {
+        secondaryHeader(writer, type, user.name().size() + 14);
+        user.toBytesListOrder(writer, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        user.fromBytesListOrder(reader, true);
+    }
+    void describe(std::ostringstream& ss) const
+    {
+        ss << "[UserListRanked/" << type << " " << user.describe() << "]";
+    }
+};
+
+struct UserPart : public Message {
     constexpr static wpn_short_t type = 115;
-
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-
-    MAKE_CONSTR(ChatUserPart)
+    Username user;
     void encode(BinaryWriter& writer) const
     {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 7);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
+        secondaryHeader(writer, type, user.name().size() + 7);
+        user.toBytes(writer);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
+        user.fromBytes(reader);
     }
-    std::string describe() const
+    void describe(std::ostringstream& ss) const
     {
-        STREAM_TYPE(ChatUserPart)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_END()
+        //ss << "[UserPart/" << type << " " << user.describe() << "]";
     }
 };
 
-/**
- * @brief A message sent to a chat client after joining the server.
- * @details 120 [Text:N]
- */
-struct ChatDailyMessage : public Message {
+struct UserRenameRanked : public Message {
+    constexpr static wpn_short_t type = 116;
+    Username currentInfo;
+    User newInfo;
+    void encode(BinaryWriter& writer) const
+    {
+        secondaryHeader(writer, type, currentInfo.name().size() + newInfo.name().size() + 20);
+        currentInfo.toBytes(writer);
+        newInfo.toBytesListOrder(writer, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        currentInfo.fromBytes(reader);
+        newInfo.fromBytesListOrder(reader, true);
+    }
+    void describe(std::ostringstream& ss) const
+    {
+        // ss << "[UserRenameRanked/" << type << " current=" << currentInfo << " new=" << newInfo << "]";
+    }
+};
+
+struct UserJoinRankedIp : public Message {
+    constexpr static wpn_short_t type = 117;
+    User user;
+    wpn_int_t ip;
+    void encode(BinaryWriter& writer) const
+    {
+        secondaryHeader(writer, type, user.name().size() + 14);
+        user.toBytesListOrder(writer, true);
+        writer.writeInt(ip);
+    }
+    void decode(BinaryReader& reader)
+    {
+        user.fromBytesListOrder(reader, true);
+        ip = reader.readInt();
+    }
+    void describe(std::ostringstream& ss) const
+    {
+        ss << "[UserJoinRankedIp/" << type << " " << user.describe() << "]";
+    }
+};
+struct DailyMessage : public Message {
     constexpr static wpn_short_t type = 120;
-
     std::string text;
-
-    MAKE_CONSTR(ChatDailyMessage)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -361,27 +247,18 @@ struct ChatDailyMessage : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         text = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatDailyMessage)
-        STREAM_VAR(text)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[DailyMessage/" << type << " text=" << text << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Text message sent by a client. Excludes action text and does not support color codes.
- * @details 200 [Text:N]
- */
-struct ChatClientText : public Message {
+struct ClientText : public Message {
     constexpr static wpn_short_t type = 200;
-
     std::string text;
-
-    MAKE_CONSTR(ChatClientText)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -390,58 +267,20 @@ struct ChatClientText : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         text = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatClientText)
-        STREAM_VAR(text)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ClientText/" << type << " text=" << text << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Action text message sent by a client. Does not support color codes.
- * @details 202 [Text:N]
- */
-struct ChatClientAction : public Message {
-    constexpr static wpn_short_t type = 202;
-
-    std::string text;
-
-    MAKE_CONSTR(ChatClientAction)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(text.size() + 1);
-        writer.writeString(text, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        text = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatClientAction)
-        STREAM_VAR(text)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Text message broadcast sent by a server. Does not support color codes.
- * @details 201 [UserName:N][Text:N]{[Rank:1]}
- */
-struct ChatServerText : public Message {
+struct ServerText : public Message {
     constexpr static wpn_short_t type = 201;
-
     std::string userName;
     std::string text;
     wpn_byte_t rank;
-
-    MAKE_CONSTR(ChatServerText)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -452,33 +291,41 @@ struct ChatServerText : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         userName = reader.readString();
         text = reader.readString();
-
-        if (reader.canRead(1))
-            rank = reader.readByte();
+        rank = reader.readByte();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatServerText)
-        STREAM_VAR(userName)
-        STREAM_VAR(text)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ServerText/" << type << " userName=" << userName << " text=" << text << " rank=" << rank << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Action text message broadcast sent by a server. Does not support color codes.
- * @details 203 [UserName:N][Text:N]
- */
-struct ChatServerAction : public Message {
+struct ClientAction : public Message {
+    constexpr static wpn_short_t type = 202;
+    std::string text;
+    void encode(BinaryWriter& writer) const
+    {
+        writer.writeShort(type);
+        writer.writeShort(text.size() + 1);
+        writer.writeString(text, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        text = reader.readString();
+    }
+    std::string describe() const
+    {
+        std::ostringstream ss;
+        ss << "[ClientAction/" << type << " text=" << text << "]";
+        return ss.str();
+    }
+};
+struct ServerAction : public Message {
     constexpr static wpn_short_t type = 203;
-
     std::string userName;
     std::string text;
-
-    MAKE_CONSTR(ChatServerAction)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -488,29 +335,19 @@ struct ChatServerAction : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         userName = reader.readString();
         text = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatServerAction)
-        STREAM_VAR(userName)
-        STREAM_VAR(text)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ServerAction/" << type << " userName=" << userName << " text=" << text << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Channel topic sent by server. Typically sent after join and when topic changes.
- * @details 300 [Text:N]
- */
-struct ChatTopic : public Message {
-    constexpr static wpn_short_t type = 300;
-
+struct ServerColorText : public Message {
+    constexpr static wpn_short_t type = 210;
     std::string text;
-
-    MAKE_CONSTR(ChatTopic)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -519,55 +356,97 @@ struct ChatTopic : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         text = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatTopic)
-        STREAM_VAR(text)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ServerColorText/" << type << " text=" << text << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Sent periodically by clients and servers to ensure connection is still active. Includes dummy payload for compatibility with non-compliant 3rd party clients/servers.
- * @details 65000 (This message has no payload)
- */
-struct ChatKeepAlive : public Message {
-    constexpr static wpn_short_t type = 65000;
-
-    MAKE_CONSTR(ChatKeepAlive)
+struct CommandEcho : public Message {
+    constexpr static wpn_short_t type = 211;
+    std::string text;
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
-        writer.writeShort(4);
-        writer.writeInt(65000);
+        writer.writeShort(text.size() + 1);
+        writer.writeString(text, true);
     }
     void decode(BinaryReader& reader)
     {
+        text = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatKeepAlive)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[CommandEcho/" << type << " text=" << text << "]";
+        return ss.str();
     }
 };
-
-// ###################################
-// #                                 #
-// #   WinMX version 3.53 messages   #
-// #                                 #
-// ###################################
-
-/**
- * @brief Sent by clients to signal support for messages added in WinMX 3.53.
- * @details 5101 [49]
- */
-struct ChatClient353Support : public Message {
+struct Topic : public Message {
+    constexpr static wpn_short_t type = 300;
+    std::string text;
+    void encode(BinaryWriter& writer) const
+    {
+        writer.writeShort(type);
+        writer.writeShort(text.size() + 1);
+        writer.writeString(text, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        text = reader.readString();
+    }
+    std::string describe() const
+    {
+        std::ostringstream ss;
+        ss << "[Topic/" << type << " text=" << text << "]";
+        return ss.str();
+    }
+};
+struct ServerRename : public Message {
+    constexpr static wpn_short_t type = 301;
+    std::string roomName;
+    void encode(BinaryWriter& writer) const
+    {
+        writer.writeShort(type);
+        writer.writeShort(roomName.size() + 1);
+        writer.writeString(roomName, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        roomName = reader.readString();
+    }
+    std::string describe() const
+    {
+        std::ostringstream ss;
+        ss << "[ServerRename/" << type << " roomName=" << roomName << "]";
+        return ss.str();
+    }
+};
+struct ServerRedirect : public Message {
+    constexpr static wpn_short_t type = 400;
+    std::string roomName;
+    void encode(BinaryWriter& writer) const
+    {
+        writer.writeShort(type);
+        writer.writeShort(roomName.size() + 1);
+        writer.writeString(roomName, true);
+    }
+    void decode(BinaryReader& reader)
+    {
+        roomName = reader.readString();
+    }
+    std::string describe() const
+    {
+        std::ostringstream ss;
+        ss << "[ServerRedirect/" << type << " roomName=" << roomName << "]";
+        return ss.str();
+    }
+};
+struct Client353Support : public Message {
     constexpr static wpn_short_t type = 5101;
-
-    MAKE_CONSTR(ChatClient353Support)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -579,400 +458,14 @@ struct ChatClient353Support : public Message {
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatClient353Support)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[Client353Support/" << type << " 49=" << 49 << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Sent by servers to signal support for messages added in WinMX 3.53.
- * @details 104 (This message has no payload)
- */
-struct ChatServer353Support : public Message {
-    constexpr static wpn_short_t type = 104;
-
-    MAKE_CONSTR(ChatServer353Support)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(0);
-    }
-    void decode(BinaryReader& reader)
-    {
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatServer353Support)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by chat server when a new user has joined the server. The client typically prints a message informing the user in response to this message.
- * @details 113 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4][Rank:1]
- */
-struct ChatUserJoinRank : public Message {
-    constexpr static wpn_short_t type = 113;
-
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-    wpn_byte_t rank;
-
-    MAKE_CONSTR(ChatUserJoinRank)
-    explicit ChatUserJoinRank(ClientData const& dataSource)
-    {
-        userName = dataSource.name;
-        parentAddress = dataSource.parentAddress;
-        parentUdpPort = dataSource.parentPort;
-        lineType = dataSource.lineType;
-        sharedFiles = dataSource.sharedFiles;
-        rank = dataSource.rank;
-    }
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 14);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
-        writer.writeByte(rank);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
-        rank = reader.readByte();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatUserJoinRank)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(rank)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by chat server to populate the client's user list.
- * @details 114 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4][Rank:1]
- */
-struct ChatUserListRank : public Message {
-    constexpr static wpn_short_t type = 114;
-
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-    wpn_byte_t rank;
-
-    MAKE_CONSTR(ChatUserListRank)
-    explicit ChatUserListRank(ClientData const& dataSource)
-    {
-        userName = dataSource.name;
-        parentAddress = dataSource.parentAddress;
-        parentUdpPort = dataSource.parentPort;
-        lineType = dataSource.lineType;
-        sharedFiles = dataSource.sharedFiles;
-        rank = dataSource.rank;
-    }
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 14);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
-        writer.writeByte(rank);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
-        rank = reader.readByte();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatUserListRank)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(rank)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by chat server when a user's information changes.
- * @details 116 [OldUserName:N][OldPriIp:4][OldPriPort:2][UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4][Rank:1]
- */
-struct ChatUserRenameRank : public Message {
-    constexpr static wpn_short_t type = 116;
-
-    std::string oldUserName;
-    wpn_int_t oldParentAddress;
-    wpn_short_t oldParentUdpPort;
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-    wpn_byte_t rank;
-
-    MAKE_CONSTR(ChatUserRenameRank)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(oldUserName.size() + userName.size() + 21);
-        writer.writeString(oldUserName, true);
-        writer.writeInt(oldParentAddress);
-        writer.writeShort(oldParentUdpPort);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
-        writer.writeByte(rank);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        oldUserName = reader.readString();
-        oldParentAddress = reader.readInt();
-        oldParentUdpPort = reader.readShort();
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
-        rank = reader.readByte();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatUserRenameRank)
-        STREAM_VAR(oldUserName)
-        STREAM_VAR(oldParentAddress)
-        STREAM_VAR(oldParentUdpPort)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(rank)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by chat server when a new user has joined the server. The client typically prints a message informing the user in response to this message.
- * @details 117 [UserName:N][PriIp:4][PriPort:2][Speed:2][Files:4][Rank:1][IpAddress:4]
- */
-struct ChatUserJoinRankIp : public Message {
-    constexpr static wpn_short_t type = 117;
-
-    std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_short_t lineType;
-    wpn_int_t sharedFiles;
-    wpn_byte_t rank;
-    wpn_int_t ipAddress;
-
-    MAKE_CONSTR(ChatUserJoinRankIp)
-    explicit ChatUserJoinRankIp(ClientData const& dataSource)
-    {
-        userName = dataSource.name;
-        parentAddress = dataSource.parentAddress;
-        parentUdpPort = dataSource.parentPort;
-        lineType = dataSource.lineType;
-        sharedFiles = dataSource.sharedFiles;
-        rank = dataSource.rank;
-        ipAddress = dataSource.endPoint.address();
-    }
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 25);
-        writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
-        writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
-        writer.writeByte(rank);
-        writer.writeInt(ipAddress);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        lineType = reader.readShort();
-        sharedFiles = reader.readInt();
-        rank = reader.readByte();
-        ipAddress = reader.readInt();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatUserJoinRankIp)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(lineType)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(rank)
-        STREAM_VAR(ipAddress)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Color text sent by a chat server. Supports color byte codes.
- * @details 210 [Text:N]
- */
-struct ChatServerColorText : public Message {
-    constexpr static wpn_short_t type = 210;
-
-    std::string text;
-
-    MAKE_CONSTR(ChatServerColorText)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(text.size() + 1);
-        writer.writeString(text, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        text = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatServerColorText)
-        STREAM_VAR(text)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Server echo of commands typed by user.
- * @details 211 [Text:N]
- */
-struct ChatCommandEcho : public Message {
-    constexpr static wpn_short_t type = 211;
-
-    std::string text;
-
-    MAKE_CONSTR(ChatCommandEcho)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(text.size() + 1);
-        writer.writeString(text, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        text = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatCommandEcho)
-        STREAM_VAR(text)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a server when the name of the room changes.
- * @details 301 [Text:N]
- */
-struct ChatServerRename : public Message {
-    constexpr static wpn_short_t type = 301;
-
-    std::string roomName;
-
-    MAKE_CONSTR(ChatServerRename)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(roomName.size() + 1);
-        writer.writeString(roomName, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        roomName = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatServerRename)
-        STREAM_VAR(roomName)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a server when the room is being redirected to another server.
- * @details 400 [Text:N]
- */
-struct ChatServerRedirect : public Message {
-    constexpr static wpn_short_t type = 400;
-
-    std::string roomName;
-
-    MAKE_CONSTR(ChatServerRedirect)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(roomName.size() + 1);
-        writer.writeString(roomName, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        roomName = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(ChatServerRedirect)
-        STREAM_VAR(roomName)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a client when it has been redirected from another server.
- * @details 5102 [Text:N]
- */
-struct ChatClientRedirect : public Message {
+struct ClientRedirect : public Message {
     constexpr static wpn_short_t type = 5102;
-
     std::string roomName;
-
-    MAKE_CONSTR(ChatClientRedirect)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -981,27 +474,18 @@ struct ChatClientRedirect : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         roomName = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatClientRedirect)
-        STREAM_VAR(roomName)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ClientRedirect/" << type << " roomName=" << roomName << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Color text sent by a chat client. Supports color byte codes.
- * @details 5200 [Text:N]
- */
-struct ChatClientColorText : public Message {
+struct ClientColorText : public Message {
     constexpr static wpn_short_t type = 5200;
-
     std::string text;
-
-    MAKE_CONSTR(ChatClientColorText)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1010,31 +494,35 @@ struct ChatClientColorText : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         text = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatClientColorText)
-        STREAM_VAR(text)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ClientColorText/" << type << " text=" << text << "]";
+        return ss.str();
     }
 };
-
-// #######################################
-// #                                     #
-// #   RoboMX messages added by Bender   #
-// #                                     #
-// #######################################
-
-/**
- * @brief Signals that the channel is hosted by RoboMX.
- * @details 105 (This type has no payload)
- */
+struct KeepAlive : public Message {
+    constexpr static wpn_short_t type = 65000;
+    void encode(BinaryWriter& writer) const
+    {
+        writer.writeShort(type);
+        writer.writeShort(2);
+        writer.writeShort(65000);
+    }
+    void decode(BinaryReader& reader)
+    {
+    }
+    std::string describe() const
+    {
+        std::ostringstream ss;
+        ss << "[KeepAlive/" << type << " 65000=" << 65000 << "]";
+        return ss.str();
+    }
+};
 struct RobomxChannel : public Message {
     constexpr static wpn_short_t type = 105;
-
-    MAKE_CONSTR(RobomxChannel)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1045,25 +533,13 @@ struct RobomxChannel : public Message {
     }
     std::string describe() const
     {
-        STREAM_TYPE(RobomxChannel)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[Channel/" << type << "]";
+        return ss.str();
     }
 };
-
-// ########################################
-// #                                      #
-// #   WCS messages added by KM/MXTools   #
-// #                                      #
-// ########################################
-
-/**
- * @brief Signals that the server supports IPSend.
- * @details 39168 (This type has no payload)
- */
 struct WcsServerIpSendSupport : public Message {
     constexpr static wpn_short_t type = 39168;
-
-    MAKE_CONSTR(WcsServerIpSendSupport)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1074,19 +550,13 @@ struct WcsServerIpSendSupport : public Message {
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsServerIpSendSupport)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ServerIpSendSupport/" << type << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Signals that the client supports IPSend.
- * @details 39169 (This type has no payload)
- */
 struct WcsClientIpSendSupport : public Message {
     constexpr static wpn_short_t type = 39169;
-
-    MAKE_CONSTR(WcsClientIpSendSupport)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1097,72 +567,51 @@ struct WcsClientIpSendSupport : public Message {
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsClientIpSendSupport)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ClientIpSendSupport/" << type << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Sent by chat server to populate the client's user list.
- * @details 39170 [UserName:N][PriIp:4][PriPort:2][Files:2][Speed:2][Rank:1][Ip:N]
- */
 struct WcsIpSendEntry : public Message {
     constexpr static wpn_short_t type = 39170;
-
     std::string userName;
-    wpn_int_t parentAddress;
-    wpn_short_t parentUdpPort;
-    wpn_int_t sharedFiles;
+    wpn_int_t parentIp;
+    wpn_short_t parentUdp;
+    wpn_short_t sharedFiles;
     wpn_short_t lineType;
     wpn_byte_t rank;
-    std::string ipAddress;
-
-    MAKE_CONSTR(WcsIpSendEntry)
+    std::string ip;
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
-        writer.writeShort(userName.size() + ipAddress.size() + 15);
+        writer.writeShort(userName.size() + ip.size() + 13);
         writer.writeString(userName, true);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentUdpPort);
+        writer.writeInt(parentIp);
+        writer.writeShort(parentUdp);
+        writer.writeShort(sharedFiles);
         writer.writeShort(lineType);
-        writer.writeInt(sharedFiles);
         writer.writeByte(rank);
-        writer.writeString(ipAddress, true);
+        writer.writeString(ip, true);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         userName = reader.readString();
-        parentAddress = reader.readInt();
-        parentUdpPort = reader.readShort();
-        sharedFiles = reader.readInt();
+        parentIp = reader.readInt();
+        parentUdp = reader.readShort();
+        sharedFiles = reader.readShort();
         lineType = reader.readShort();
         rank = reader.readByte();
-        ipAddress = reader.readString();
+        ip = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(ChatUserListRank)
-        STREAM_VAR(userName)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentUdpPort)
-        STREAM_VAR(sharedFiles)
-        STREAM_VAR(lineType)
-        STREAM_VAR(rank)
-        STREAM_VAR(ipAddress)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[IpSendEntry/" << type << " userName=" << userName << " parentIp=" << parentIp << " parentUdp=" << parentUdp << " sharedFiles=" << sharedFiles << " lineType=" << lineType << " rank=" << rank << " ip=" << ip << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Signals that all IPSend entries have been transmitted to the client.
- * @details 39171 (This type has no payload)
- */
 struct WcsIpSendComplete : public Message {
     constexpr static wpn_short_t type = 39171;
-
-    MAKE_CONSTR(WcsIpSendComplete)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1173,21 +622,14 @@ struct WcsIpSendComplete : public Message {
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsIpSendComplete)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[IpSendComplete/" << type << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Sets the color code format used by the server.
- * @details 39172 [Format:N]
- */
 struct WcsColorFormat : public Message {
     constexpr static wpn_short_t type = 39172;
-
     std::string format;
-
-    MAKE_CONSTR(WcsColorFormat)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1196,60 +638,41 @@ struct WcsColorFormat : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         format = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsColorFormat)
-        STREAM_VAR(format)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[ColorFormat/" << type << " format=" << format << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief The name and version of the software used by the remote peer.
- * @details 39173 [Name:N][Version:N]
- */
 struct WcsSoftwareName : public Message {
     constexpr static wpn_short_t type = 39173;
-
     std::string name;
     std::string version;
-
-    MAKE_CONSTR(WcsSoftwareName)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
-        writer.writeShort(name.size() + version.size() + 1);
+        writer.writeShort(name.size() + version.size() + 2);
         writer.writeString(name, true);
         writer.writeString(version, true);
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         name = reader.readString();
         version = reader.readString();
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsSoftwareName)
-        STREAM_VAR(name)
-        STREAM_VAR(version)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[SoftwareName/" << type << " name=" << name << " version=" << version << "]";
+        return ss.str();
     }
 };
-
-/**
- * @brief Sent by server to signal the start and end of a large block of text.
- * @details 39174 [StartOrEnd:1]
- */
 struct WcsFlood : public Message {
     constexpr static wpn_short_t type = 39174;
-
     wpn_byte_t isStart;
-
-    MAKE_CONSTR(WcsFlood)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
@@ -1258,430 +681,50 @@ struct WcsFlood : public Message {
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
         isStart = reader.readByte();
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsFlood)
-        STREAM_VAR(isStart)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[Flood/" << type << " isStart=" << isStart << "]";
+        return ss.str();
     }
 };
-
-enum WcsMenuMode : wpn_byte_t {
-    WcsMenuModeSupport = 0,
-    WcsMenuModeUser = 1,
-    WcsMenuModeChannel = 2,
-    WcsMenuModeScroll = 3
-};
-
-enum WcsMenuStyle : wpn_short_t {
-    WcsMenuStyleDisabled = 1,
-    WcsMenuStyleDisabledNotGray = 2,
-    WcsMenuStyleChecked = 8,
-    WcsMenuStyleNewColumn = 32,
-    WcsMenuStyleNewColumnNoLine = 64,
-    WcsMenuStyleSeperator = 2048
-};
-
-/**
- * @brief Sent by server to signal the start and end of a large block of text.
- * @details 39175 [Type:1][Title:N][MenuType:2][Command:N]
- */
 struct WcsMenu : public Message {
     constexpr static wpn_short_t type = 39175;
-
     wpn_byte_t mode;
     std::string title;
     wpn_short_t style;
     std::string command;
-
-    MAKE_CONSTR(WcsMenu)
     void encode(BinaryWriter& writer) const
     {
         writer.writeShort(type);
-
-        switch (mode) {
-        case WcsMenuModeSupport: {
-            // Mode only
-            writer.writeShort(1);
-            writer.writeByte(mode);
-            break;
-        }
-        case WcsMenuModeScroll: {
-            // Mode and title
-            writer.writeShort(title.size() + 2);
-            writer.writeByte(mode);
+        writer.writeShort(title.size() + command.size() + 5);
+        writer.writeByte(mode);
+        if (mode != 0) {
             writer.writeString(title, true);
-            break;
-        }
-        default: {
-            // All fields
-            writer.writeShort(title.size() + command.size() + 5);
-            writer.writeByte(mode);
-            writer.writeString(title, true);
-            writer.writeShort(style);
-            writer.writeString(command, true);
-            break;
-        }
+            if (mode != 1) {
+                writer.writeShort(style);
+                writer.writeString(command, true);
+            }
         }
     }
     void decode(BinaryReader& reader)
     {
-        reader.skip(4);
-
-        switch (reader.readByte()) {
-        case WcsMenuModeScroll: {
-            // Only contains a title
+        mode = reader.readByte();
+        if (mode != 0) {
             title = reader.readString();
-            break;
-        }
-        case WcsMenuModeChannel:
-        case WcsMenuModeUser: {
-            // Contains all fields
-            title = reader.readString();
-            style = reader.readShort();
-            command = reader.readString();
-            break;
-        }
+            if (mode != 1) {
+                style = reader.readShort();
+                command = reader.readString();
+            }
         }
     }
     std::string describe() const
     {
-        STREAM_TYPE(WcsMenu)
-        STREAM_VAR(mode)
-        STREAM_VAR(title)
-        STREAM_VAR(style)
-        STREAM_VAR(command)
-        STREAM_END()
+        std::ostringstream ss;
+        ss << "[Menu/" << type << " mode=" << mode << " title=" << title << " style=" << style << " command=" << command << "]";
+        return ss.str();
     }
 };
-
-// ###################################################
-// #                                                 #
-// #   EServ/Wpcc messages added by Eagle/Emulator   #
-// #                                                 #
-// ###################################################
-
-/**
- * @brief Signals server support for Eserv/WPCC chat extensions.
- * @details 0x3400 [00:1]
- */
-struct WpccServerSupport : public Message {
-    constexpr static wpn_short_t type = 0x3400;
-
-    MAKE_CONSTR(WpccServerSupport)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(1);
-        writer.writeShort(0);
-    }
-    void decode(BinaryReader& reader)
-    {
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccServerSupport)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Signals client support for Eserv/WPCC chat extensions.
- * @details 0x3470 [00:1]
- */
-struct WpccClientSupport : public Message {
-    constexpr static wpn_short_t type = 0x3470;
-
-    MAKE_CONSTR(WpccClientSupport)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(1);
-        writer.writeShort(0);
-    }
-    void decode(BinaryReader& reader)
-    {
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccClientSupport)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a server when a client is currently typing a message.
- * @details 0x3401 [PrimaryIP:4][PrimaryPort:2][Nick:S]
- */
-struct WpccServerTypingBegin : public Message {
-    constexpr static wpn_short_t type = 0x3401;
-
-    wpn_int_t parentAddress;
-    wpn_short_t parentPort;
-    std::string userName;
-
-    MAKE_CONSTR(WpccServerTypingBegin)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 7);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentPort);
-        writer.writeString(userName, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        parentAddress = reader.readInt();
-        parentPort = reader.readShort();
-        userName = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccServerTypingBegin)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentPort)
-        STREAM_VAR(userName)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a server when a client is stops typing a message.
- * @details 0x3402 [PrimaryIP:4][PrimaryPort:2][Nick:S]
- */
-struct WpccServerTypingEnd : public Message {
-    constexpr static wpn_short_t type = 0x3402;
-
-    wpn_int_t parentAddress;
-    wpn_short_t parentPort;
-    std::string userName;
-
-    MAKE_CONSTR(WpccServerTypingEnd)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 7);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentPort);
-        writer.writeString(userName, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        parentAddress = reader.readInt();
-        parentPort = reader.readShort();
-        userName = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccServerTypingEnd)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentPort)
-        STREAM_VAR(userName)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a client when the user is typing a message.
- * @details 0x3471 [00:1]
- */
-struct WpccClientTypingBegin : public Message {
-    constexpr static wpn_short_t type = 0x3471;
-
-    MAKE_CONSTR(WpccClientTypingBegin)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(1);
-        writer.writeShort(0);
-    }
-    void decode(BinaryReader& reader)
-    {
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccClientTypingBegin)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a client when the user stops typing a message.
- * @details 0x3472 [00:1]
- */
-struct WpccClientTypingEnd : public Message {
-    constexpr static wpn_short_t type = 0x3472;
-
-    MAKE_CONSTR(WpccClientTypingEnd)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(1);
-        writer.writeShort(0);
-    }
-    void decode(BinaryReader& reader)
-    {
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccClientTypingEnd)
-        STREAM_END()
-    }
-};
-
-enum WpccStatus {
-    Online = 0,
-    Busy = 1,
-    BeRightBack = 2,
-    Away = 3,
-    OnPhone = 4,
-    AtLunch = 5,
-    AtDinner = 6
-};
-
-/**
- * @brief Sent by a server when the status of a user changes.
- * @details 0x3411 [Status:2][PrimaryIP:4][PrimaryPort:2][Nick:S]
- */
-struct WpccServerStatus : public Message {
-    constexpr static wpn_short_t type = 0x3411;
-
-    wpn_short_t status;
-    wpn_int_t parentAddress;
-    wpn_short_t parentPort;
-    std::string userName;
-
-    MAKE_CONSTR(WpccServerStatus)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + 9);
-        writer.writeShort(status);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentPort);
-        writer.writeString(userName, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        status = reader.readShort();
-        parentAddress = reader.readInt();
-        parentPort = reader.readShort();
-        userName = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccServerStatus)
-        STREAM_VAR(status)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentPort)
-        STREAM_VAR(userName)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a client when it's status changes.
- * @details 0x3472 [Status:2]
- */
-struct WpccClientStatus : public Message {
-    constexpr static wpn_short_t type = 0x3472;
-
-    wpn_short_t status;
-
-    MAKE_CONSTR(WpccClientStatus)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(2);
-        writer.writeShort(status);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        status = reader.readShort();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccClientStatus)
-        STREAM_VAR(status)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a server when the bio text of a user changes.
- * @details 0x3421 [PrimaryIP:4][PrimaryPort:2][Nick:S][PersonalMessage:N]
- */
-struct WpccServerBio : public Message {
-    constexpr static wpn_short_t type = 0x3421;
-
-    wpn_int_t parentAddress;
-    wpn_short_t parentPort;
-    std::string userName;
-    std::string bio;
-
-    MAKE_CONSTR(WpccServerBio)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(userName.size() + bio.size() + 8);
-        writer.writeInt(parentAddress);
-        writer.writeShort(parentPort);
-        writer.writeString(userName, true);
-        writer.writeString(bio, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        parentAddress = reader.readInt();
-        parentPort = reader.readShort();
-        userName = reader.readString();
-        bio = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccServerBio)
-        STREAM_VAR(parentAddress)
-        STREAM_VAR(parentPort)
-        STREAM_VAR(userName)
-        STREAM_VAR(bio)
-        STREAM_END()
-    }
-};
-
-/**
- * @brief Sent by a client when it's bio text changes.
- * @details 0x3491 [PrimaryIP:4][PrimaryPort:2][Nick:S][PersonalMessage:N]
- */
-struct WpccClientBio : public Message {
-    constexpr static wpn_short_t type = 0x3491;
-
-    std::string bio;
-
-    MAKE_CONSTR(WpccClientBio)
-    void encode(BinaryWriter& writer) const
-    {
-        writer.writeShort(type);
-        writer.writeShort(bio.size() + 1);
-        writer.writeString(bio, true);
-    }
-    void decode(BinaryReader& reader)
-    {
-        reader.skip(4);
-        bio = reader.readString();
-    }
-    std::string describe() const
-    {
-        STREAM_TYPE(WpccClientBio)
-        STREAM_VAR(bio)
-        STREAM_END()
-    }
-};
-
-} // namespace OpenMX::protocol
+}

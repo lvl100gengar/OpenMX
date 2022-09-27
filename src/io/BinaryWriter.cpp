@@ -15,6 +15,10 @@ bool BinaryWriter::canWrite(size_t writeSize) const
     return (m_currentPosition + writeSize) <= m_bufferCapacity;
 }
 
+size_t BinaryWriter::size() const {
+    return m_currentPosition;
+}
+
 void BinaryWriter::writeByte(uint8_t value)
 {
     assert(canWrite(1));

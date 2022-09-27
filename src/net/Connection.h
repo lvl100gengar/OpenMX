@@ -1,23 +1,34 @@
 #pragma once
 
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/spawn.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/write.hpp>
+#include <chrono>
 
 namespace OpenMX {
 
-class Connection : public std::enable_shared_from_this<Connection> {
-private:
-    boost::asio::ip::tcp::socket& m_socket;
-    boost::asio::io_context& m_context;
-    
-public:
-    Connection(boost::asio::io_context& context, boost::asio::ip::tcp::socket& socket);
+class EndPoint;
 
-    void send(char* buffer, size_t count);
-    void receive(char* buffer, size_t count);
+struct Connection {
+    boost::asio::ip::tcp::socket& socket;
+    boost::asio::ip::tcp::endpoint& remoteEndPoint;
+
+    using clock = std::chrono::system_clock;
+    clock::time_point lastActivity = { clock::now() };
+
+    std::function<void()> disconnectFunction;
+
+    Connection(boost::asio::ip::tcp::socket&& socket, boost::asio::ip::tcp::endpoint& ep) : socket(socket), remoteEndPoint(ep) {
+        
+    }
+
+    auto secondsSinceLastActivity() const
+    {
+        return std::chrono::duration_cast<std::chrono::seconds>(clock::now() - lastActivity).count();
+    }
+    void resetLastActivity()
+    {
+        lastActivity = clock::now();
+    }
+    EndPoint endPoint();
 };
 
 } // namespace OpenMX

@@ -1,18 +1,12 @@
 #include "Connection.h"
 
+#include "../protocol/EndPoint.h"
+
 namespace OpenMX {
 
-Connection::Connection(boost::asio::io_context& context, boost::asio::ip::tcp::socket& socket)
-    : m_context(context)
-    , m_socket(socket)
+EndPoint Connection::endPoint()
 {
-}
-
-void Connection::send(char* buffer, size_t count)
-{
-}
-void Connection::receive(char* buffer, size_t count)
-{
+    return EndPoint(remoteEndPoint.address().to_v4().to_uint(), remoteEndPoint.port());
 }
 
 } // namespace OpenMX

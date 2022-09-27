@@ -18,6 +18,7 @@ private:
 public:
     BinaryWriter(char* buffer, size_t capacity);
     bool canWrite(size_t writeSize) const;
+    size_t size() const;
     void writeByte(uint8_t value);
     void writeShort(uint16_t value);
     void writeInt(uint32_t value);

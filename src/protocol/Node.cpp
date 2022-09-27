@@ -1,5 +1,7 @@
 #include "Node.h"
 
+#include "EndPoint.h"
+
 namespace OpenMX {
 
 Node::Node(uint32_t address, uint16_t udpPort, uint16_t tcpPort, uint8_t openPrimary, uint8_t openSecondary)
@@ -11,29 +13,37 @@ Node::Node(uint32_t address, uint16_t udpPort, uint16_t tcpPort, uint8_t openPri
 {
 }
 
-uint32_t Node::getAddress() const
+uint32_t Node::address() const
 {
     return m_address;
 }
 
-uint16_t Node::getUdpPort() const
+uint16_t Node::udpPort() const
 {
     return m_udpPort;
 }
 
-uint16_t Node::getTcpPort() const
+uint16_t Node::tcpPort() const
 {
     return m_tcpPort;
 }
 
-uint8_t Node::getOpenPrimary() const
+uint8_t Node::openPrimary() const
 {
     return m_openPrimary;
 }
 
-uint8_t Node::getOpenSecondary() const
+uint8_t Node::openSecondary() const
 {
     return m_openSecondary;
+}
+
+bool Node::equalsTcp(const EndPoint& ep) const {
+    return address() == ep.address() && tcpPort() == ep.port();
+}
+
+bool Node::equalsUdp(const EndPoint& ep) const {
+    return address() == ep.address() && udpPort() == ep.port();
 }
 
 } // namespace OpenMX
