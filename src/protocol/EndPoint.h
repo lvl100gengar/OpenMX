@@ -1,14 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace OpenMX {
 
 class EndPoint {
 private:
-    uint32_t m_address;
-    uint16_t m_port;
+    uint32_t m_address { 0 };
+    uint16_t m_port { 0 };
 
 public:
     EndPoint() = default;
@@ -18,8 +19,8 @@ public:
     uint16_t port() const;
     bool isEmpty() const;
 
-    static bool tryParse(std::string& s, EndPoint& result);
-    static bool tryParse(std::string& ip, std::string& port, EndPoint& result);
+    static std::optional<EndPoint> tryParse(std::string& s);
+    static std::optional<EndPoint> tryParse(std::string& ip, std::string& port);
 
     bool operator==(const EndPoint& other) const;
 };

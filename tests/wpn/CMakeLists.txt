@@ -1,0 +1,1 @@
+target_sources(tests PUBLIC EndPoint.Test.cpp RoomName.Test.cpp)
